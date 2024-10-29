@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>USDT Transfer Monitor</title>
+</head>
+<body>
+  <h1>Real time monitoring of USDT transfer events</h1>
+  <div id="events"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script>
+    // used for mainnet
+    const provider = new ethers.providers.JsonRpcProvider("https://mainnet.infura.io/v3/d616dbd1450d40e695eb7bed0ae24ff0");
+
+    // USDT contract address and transfer event hash
+    const USDT_CONTRACT_ADDRESS = "0xdac17f958d2ee523a2206206994597c13d831ec7";
+    const TRANSFER_EVENT_HASH = ethers.utils.id("Transfer(address,address,uint256)");
+
+    // get the events div element to display the events
+    const eventsDiv = document.getElementById("events");
+
+    // minitor for USDT transfers
+    async function monitorUSDTTransfers() {
+      provider.on("block", async (blockNumber) => {
+        console.log(`minitored new block: ${blockNumber}`);
+
+        // get the logs for the block
+        const logs = await provider.getLogs({
+          fromBlock: blockNumber,
+          toBlock: blockNumber,
+          address: USDT_CONTRACT_ADDRESS,
+          topics: [TRANSFER_EVENT_HASH],
+        });
+
+        logs.forEach(log => {
+          const from = "0x" + log.topics[1].substring(26);
+          const to = "0x" + log.topics[2].substring(26);
+          const value = ethers.BigNumber.from(log.data).div(ethers.BigNumber.from(10).pow(6));
+
+          // Add event information to the page
+          const eventElement = document.createElement("p");
+          eventElement.textContent = 
+            `Block: ${blockNumber}, Transaction_Hash: ${log.transactionHash}, From ${from} Transfer ${value} USDT To ${to}`;
+          
+          // Set background color based on block number parity
+          eventElement.style.backgroundColor = blockNumber % 2 === 0 ? "#f0f8ff" : "#e6f7ff";   
+          // Change font color and bold
+          eventElement.style.color = blockNumber % 2 === 0 ? "darkblue" : "darkgreen";
+          eventElement.style.fontWeight = "bold";
+          // Add borders and spacing
+          eventElement.style.border = "1px solid #ddd";
+          eventElement.style.padding = "10px";
+          eventElement.style.margin = "10px 0";
+
+
+          // The latest events are displayed at the top
+          eventsDiv.prepend(eventElement); 
+
+        });
+      });
+    }
+
+    // start monitoring USDT transfers
+    monitorUSDTTransfers().catch(error => {
+      console.error("Get_error:", error);
+    });
+  </script>
+</body>
+</html>
